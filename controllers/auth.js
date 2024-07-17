@@ -1,3 +1,5 @@
+
+
 //
 /*
 Контроллер отвечает за генерацию определенного представления путем
@@ -6,6 +8,10 @@
 Например, маршрут вернет представление, связавшись с обработчиком
 контроллера представления входа . /login login.pug loginView
  */
+
+const bcrypt = require('bcryptjs');
+const passport = require('passport');
+const User = require('../models/User');
 
 /*
 module.exports. Это часть системы модулей Node.js, которая позволяет разделять код
@@ -21,15 +27,29 @@ module.exports = {
         res.render('login');
     },
 
-    registerUser: (req, res) => {
-        res.redirect('register'); //переадресация
+    registerUser: async (req, res) => {
+        const { name, email, password } = req.body;
+        if(!name || !email || !password) {
+            return res.render('register', { error: 'Please fill all fields' });
+        }
+
+        if(await User.findOne({where: {email}})) {
+            return res.render('register', { error: 'A user account already exists with this email' });
+        }
+
+        await User.create({name, email, password: bcrypt.hashSync(password, 8)});
+
+        res.redirect('login?registrationdone');
     },
 
     loginUser: (req,res) => {
-        res.redirect('login');
+        passport.authenticate('local', {
+            successRedirect: '/?loginsuccess',
+            failureRedirect:'/login?error'
+        })(req, res);
     },
 
     logoutUser: (req, res) => {
-        res.redirect('login');
+        req.logout(() => res.redirect('/login?loggedout'));
     }
 }
